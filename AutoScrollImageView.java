@@ -10,12 +10,14 @@ import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 
+import java.lang.ref.WeakReference;
+
 /**
  * Created by William.Qin on 6/17/2015.
  */
 public class AutoScrollImageView extends HorizontalScrollView implements Runnable {
     Drawable drawable;
-    Handler handler;
+    MyHandler handler = new MyHandler(this);
     private boolean circleScroll = true;
     int maxScrollX;
     int targetScrollX = 0;
@@ -39,8 +41,6 @@ public class AutoScrollImageView extends HorizontalScrollView implements Runnabl
 
     public void setImage(Drawable d) {
         drawable = d;
-        int h = drawable.getIntrinsicHeight();
-        int w = drawable.getIntrinsicWidth();
         ImageView imageView = new ImageView(getContext());
         imageView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
         imageView.setImageDrawable(d);
@@ -84,42 +84,51 @@ public class AutoScrollImageView extends HorizontalScrollView implements Runnabl
     public void run() {
         maxScrollX = getChildAt(0).getMeasuredWidth() - getMeasuredWidth();
         if (maxScrollX > 0) {
-            handler = new Handler() {
-                @Override
-                public void handleMessage(Message msg) {
-                    super.handleMessage(msg);
-                    if (circleScroll) {
-                        if (targetScrollX <= maxScrollX && targetScrollX >= 0) {
-                            if (scrollToRight) {
-                                targetScrollX += K;
-                            } else {
-                                targetScrollX -= K;
-                            }
-                        } else {
-                            if (scrollToRight) {
-                                targetScrollX -= K;
-                            } else {
-                                targetScrollX += K;
-                            }
-                            scrollToRight = !scrollToRight;
-                        }
-                    } else {
-                        if (targetScrollX <= getChildAt(0).getMeasuredWidth()) {
-                            if (scrollToRight) {
-                                targetScrollX += K;
-                            } else {
-                                targetScrollX -= K;
-                            }
-                        }
-                    }
-                    smoothScrollTo(targetScrollX, 0);
-                    requestLayout();
-
-                }
-            };
             new Thread(delay).start();
         }
         Log.e("scroll", getChildAt(0).getMeasuredWidth() + " " + targetScrollX + scrollToRight);
+    }
+
+    private static class MyHandler extends Handler {
+        private WeakReference<AutoScrollImageView> activityWeakReference;
+
+        public MyHandler(AutoScrollImageView activity) {
+            activityWeakReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            AutoScrollImageView autoView = activityWeakReference.get();
+            if (autoView != null) {
+                if (autoView.circleScroll) {
+                    if (autoView.targetScrollX <= autoView.maxScrollX && autoView.targetScrollX >= 0) {
+                        if (autoView.scrollToRight) {
+                            autoView.targetScrollX += autoView.K;
+                        } else {
+                            autoView.targetScrollX -= autoView.K;
+                        }
+                    } else {
+                        if (autoView.scrollToRight) {
+                            autoView.targetScrollX -= autoView.K;
+                        } else {
+                            autoView.targetScrollX += autoView.K;
+                        }
+                        autoView.scrollToRight = !autoView.scrollToRight;
+                    }
+                } else {
+                    if (autoView.targetScrollX <= autoView.getChildAt(0).getMeasuredWidth()) {
+                        if (autoView.scrollToRight) {
+                            autoView.targetScrollX += autoView.K;
+                        } else {
+                            autoView.targetScrollX -= autoView.K;
+                        }
+                    }
+                }
+                autoView.smoothScrollTo(autoView.targetScrollX, 0);
+                autoView.requestLayout();
+            }
+        }
+
     }
 
     Runnable delay = new Runnable() {
